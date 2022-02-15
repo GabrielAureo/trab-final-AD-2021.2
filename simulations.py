@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import math
 
 def mm1_queue(lamda, mu, max_time = 1000, max_events = 1000):
   time = 0
@@ -66,4 +66,4 @@ def confidence_interval(samples, confidence_rate = 1.95):
     n = samples.count()
     s = samples.std()
     z = confidence_rate
-    return (x - z*(s/n), x+ z*(s/n))
+    return (x - z*(s/ math.sqrt(n) ), x+ z*(s/  math.sqrt(n) ))
