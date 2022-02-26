@@ -2,44 +2,63 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import math
+from datetime import datetime
+import abc
 
+#classe abstrata das simulações
 class Simulation:
-  def __init__(self, lamda, mu, data):
+  def __init__(self, lamda, mu, data, service_durations):
     self.lamda = lamda
     self.mu = mu
     self.data = data
+    self.service_durations = service_durations
     self.rho = lamda/mu
-  def __repr__(self) -> str:
-    return self.data.__repr__()
-  def __str__(self) -> str:
-    return self.data.__str__()
   
-
+  @abc.abstractmethod
+  def __repr__(self) -> str:
+    pass
+  @abc.abstractmethod
+  def __str__(self) -> str:
+    pass
+  
+#classe Simulação MM1
 class MM1Simulation(Simulation):
-  def __init__(self, lamda, mu, data):
-    super().__init__(lamda, mu, data)
+  def __init__(self, lamda, mu, data, service_durations):
+    super().__init__(lamda, mu, data, service_durations)
   def __repr__(self) -> str:
     return super().__repr__()
   def __str__(self) -> str:
     return super().__str__()
+
   # calcula a média analítica de clientes
   def average_customers(self):
     if(self.rho > 1):
       return math.inf
     return (self.lamda)/(self.mu - self.lamda)
+
   def average_wait(self):
     if (self.rho > 1 ):
       return math.inf
-    return (1/ (self.mu - self.lamda))
-    #return self.lamda/ (self.mu * (self.lamda - self.mu))
+    return self.lamda/ (self.mu * (self.mu - self.lamda))
+
   def average_time(self):
     if(self.rho > 1):
       return math.inf
-    return self.lamda/ (self.mu * (self.mu - self.lamda))
+    return (1/ (self.mu - self.lamda))
+
   def utilization(self):
     return self.rho
 
+  def export_to_excel(self):
+    time_str = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
+    type_str = "MM1"
+    writer = pd.ExcelWriter(f"Simulation_{type_str}_{time_str}_{self.lamda}_{self.mu}.xlsx", engine='xlsxwriter')
+    self.data.to_excel(writer, 'simulation_data')
+    self.service_durations.to_excel(writer, 'services_data' )
+    writer.save()
+    return
 
+#classe Simulação MD1
 class MD1Simulation(Simulation):
   def __init__(self, lamda, mu, data):
     super().__init__(lamda, mu, data)
@@ -110,7 +129,7 @@ def m_queue(lamda, mu, max_time = 1000, max_events = 1000, kind = 'm'):
   return ledger
 
 # simula multiplas filas mm1 ou md1
-def queue_sim(lamda, mu, max_time = 1000, max_events = 1000, runs = 10, kind = 'm'):
+def queue_sim(lamda, mu, max_time = 1000, max_events = 1000, runs = 10, kind = 'm', export = False):
   assert kind in ['m','d']
 
   ledger_df = []
@@ -126,18 +145,33 @@ def queue_sim(lamda, mu, max_time = 1000, max_events = 1000, runs = 10, kind = '
 
   #remove a última amostra, pois não é possível calcular o tempo do estado
   ledger_df.dropna(how = 'any', axis = 0, subset = ['holding'], inplace = True)
-  ledger_df.reset_index(inplace=True)
+  ledger_df.reset_index(inplace=True, drop=True)
 
   if(kind == 'm'):
-    sim = MM1Simulation(lamda = lamda, mu = mu, data = ledger_df)
+    service_df = ledger_df['duration'].rename({
+      'duration' : 'service_duration'
+    })
+
+    service_df.dropna(inplace=True)
+
+    ledger_df.drop(columns=['duration'], inplace= True)
+
+  
+
+  if(kind == 'm'):
+    sim = MM1Simulation(lamda = lamda, mu = mu, data = ledger_df, service_durations = service_df)
   else:
     sim = MD1Simulation(lamda = lamda, mu = mu, data = ledger_df)
+
+  if (export):
+    sim.export_to_excel()
   return sim
+
 
 
 #calcula a utilização
 #retorna um dicionário com a utilização simulada e analitica
-def utilization(simulation_obj):
+def utilization(simulation_obj : Simulation):
   simulation = simulation_obj.data
   busy_time = simulation[simulation.N > 0].groupby('run').holding.sum()
   total_time = simulation.groupby('run').holding.sum()
@@ -147,22 +181,18 @@ def utilization(simulation_obj):
   ci = confidence_interval(utilization)
 
   return {
-    "Utilization":
-    {
-      "Simulated":{
-        "Mean": utilization.mean(),
-        "Confidence Interval" : confidence_interval(utilization)
-      },
-      "Analytical":{
-        'Mean' : simulation_obj.utilization()
-      }
+    "Utilization":{
+      "Simulated": utilization.mean(),
+      "Confidence Interval" : ci,
+      "Analytical": simulation_obj.utilization()
     }
+
   }
 
 
 #calcula a média de clientes na fila
 #retorna um dicionário com a média simulada e analitica
-def customers_metrics(simulation_obj):
+def customers_metrics(simulation_obj : Simulation):
   simulation = simulation_obj.data
   runs_groupby = simulation.groupby('run')
   total_time = runs_groupby.time.last()
@@ -172,13 +202,9 @@ def customers_metrics(simulation_obj):
 
   customers_df = {
     'Average Customers' :{
-      'Simulated': {
-        'Mean' : (areas/total_time).mean(),
-        'Confidence Interval' : confidence_interval(areas/total_time)
-    },
-      'Analytical' :{
-        'Mean' : simulation_obj.average_customers()
-      }
+      'Simulated':  (areas/total_time).mean(),
+      'Confidence Interval' : confidence_interval(areas/total_time),
+      'Analytical' : simulation_obj.average_customers()
     }
   }  
   return customers_df
@@ -192,9 +218,11 @@ def confidence_interval(samples, confidence_rate = 1.95):
 
 #calcula o tempo médio de espera e o tempo médio total que o cliente fica na fila
 #retorna um dicionário com as métricas simuladas e analíticas
-def wait_metrics(simulation_obj):
+def wait_metrics(simulation_obj : Simulation):
   simulation = simulation_obj.data
   services_df = simulation[simulation.type =='s']
+  services_df = pd.merge(left= services_df, right = simulation_obj.service_durations, left_index=True, right_index=True)
+
   services_by_run = services_df.groupby('run')
   arrivals_df = simulation[simulation.type =='a']
 
@@ -226,47 +254,35 @@ def wait_metrics(simulation_obj):
 
   return {
     "Spent Time" :{
-      'Simulated':{
-        "Average" : means.spent_time.mean(),
-        "Confidence Interval" : confidence_interval(means.spent_time)
-      },
-      'Analitical': simulation_obj.average_time()
+      "Simulated" : means.spent_time.mean(),
+      "Confidence Interval" : confidence_interval(means.spent_time),
+      'Analytical': simulation_obj.average_time()
       
     },
 
     "Wait" :{
-      'Simulated' :{
-        "Average" : means.wait.mean(),
-        "Confidence Interval" : confidence_interval(means.wait)
-      },
-      'Analitical':  simulation_obj.average_wait()
+      'Simulated' : means.wait.mean(),
+      "Confidence Interval" : confidence_interval(means.wait),
+      'Analytical':  simulation_obj.average_wait()
       
     }
   }
 
 
-def metrics(simulation_obj):
+def metrics(simulation_obj : Simulation):
   _wait_metrics = wait_metrics(simulation_obj)
   _customers_metrics = customers_metrics(simulation_obj)
   _utilization_metric = utilization(simulation_obj)
 
 
-  _wait_metrics = pd.json_normalize(_wait_metrics)
-  _customers_metrics = pd.json_normalize(_customers_metrics)
-  _utilization_metric = pd.json_normalize(_utilization_metric)
-  
-  return pd.concat([_wait_metrics, _customers_metrics, _utilization_metric])
+  _wait_metrics = pd.DataFrame.from_dict(_wait_metrics, orient= 'index')
+  _customers_metrics = pd.DataFrame.from_dict(_customers_metrics, orient= 'index')
+  _utilization_metric = pd.DataFrame.from_dict(_utilization_metric, orient= 'index')
 
-lamda = 100
-mu = 1
-sim = queue_sim(lamda, mu, max_events=1000, max_time=1000)
+  metrics_df = pd.concat([_wait_metrics, _customers_metrics, _utilization_metric])\
+    .stack()\
+    .to_frame(name = 'Metrics')
+  return metrics_df
 
-# print(sim.data.head(100))
-# print(wait_metrics(sim))
-
-# sim = queue_sim(lamda = lamda, mu = mu)
-# print(metrics(sim))
-
-# print(pd.DataFrame(wait_metrics(sim) ))
-# print(f"Analytical - Spent time: {1/(mu - lamda)}")
-# print(f"Analytical - Wait: {lamda/ (mu * (mu - lamda))}")
+sim = queue_sim(1,2)
+print(metrics(sim))
