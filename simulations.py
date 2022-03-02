@@ -4,10 +4,16 @@ import matplotlib.pyplot as plt
 import math
 from datetime import datetime
 import abc
+import analytical as an
+
+from pandas.core.frame import DataFrame
+
+from plot_metrics import plot_md1_customers_dist, plot_mm1_customers_dist
+
 
 #classe abstrata das simulações
 class Simulation:
-  def __init__(self, lamda, mu, data, service_durations):
+  def __init__(self, lamda, mu, data : DataFrame, service_durations: DataFrame):
     self.lamda = lamda
     self.mu = mu
     self.data = data
@@ -17,37 +23,73 @@ class Simulation:
   @abc.abstractmethod
   def __repr__(self) -> str:
     pass
+
   @abc.abstractmethod
   def __str__(self) -> str:
+    pass
+
+  @property
+  @abc.abstractmethod
+  def pdf(self):
+    pass
+
+  @property
+  @abc.abstractmethod
+  def average_wait(self):
+    pass
+
+  @property
+  @abc.abstractmethod
+  def average_customers(self):
+    pass
+
+  @property
+  @abc.abstractmethod
+  def utilization(self):
+    pass
+
+  @abc.abstractmethod
+  def plot_customers(self):
     pass
   
 #classe Simulação MM1
 class MM1Simulation(Simulation):
+
   def __init__(self, lamda, mu, data, service_durations):
     super().__init__(lamda, mu, data, service_durations)
+
   def __repr__(self) -> str:
     return super().__repr__()
+
   def __str__(self) -> str:
     return super().__str__()
 
-  # calcula a média analítica de clientes
+  @property
+  def pdf(self):
+    P = an.mm1_markov_chain(self.lamda, self.mu, capacity= self.data.N.max())
+    pi = an.ctmc_stationary_distribution(P)
+    return pi
+
+  @property
   def average_customers(self):
     if(self.rho > 1):
       return math.inf
-    return (self.lamda)/(self.mu - self.lamda)
-
+    return an.expected_value(self.pdf)
+  @property
   def average_wait(self):
     if (self.rho > 1 ):
       return math.inf
-    return self.lamda/ (self.mu * (self.mu - self.lamda))
+    return self.average_customers/ self.lamda
 
-  def average_delay(self):
-    if(self.rho > 1):
-      return math.inf
-    return (1/ (self.mu - self.lamda))
-
+  @property
   def utilization(self):
-    return self.rho
+    if(self.rho > 1):
+      return 1
+    u = sum(self.pdf[1:])
+    return u
+  
+  def plot_customers(self, figsize = (10,5), **kwargs):
+    plot_mm1_customers_dist(self, figsize = figsize, **kwargs)
 
   def export_to_excel(self):
     time_str = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
@@ -60,18 +102,43 @@ class MM1Simulation(Simulation):
 
 #classe Simulação MD1
 class MD1Simulation(Simulation):
-  def __init__(self, lamda, mu, data):
-    super().__init__(lamda, mu, data)
-    self.D = 1/self.mu
+  def __init__(self, lamda, mu, data, service_durations):
+    self.D = 1/mu
+    super().__init__(lamda, mu, data, service_durations)
+    
   def __repr__(self) -> str:
     return super().__repr__()
   def __str__(self) -> str:
     return super().__str__()
+  
+  @property
+  def pdf(self):
+    P = an.md1_markov_chain(self.lamda, self.mu, capacity= self.data.N.max())
+    pi = an.dtmc_stationary_distribution(P)
+    return pi
+  @property
+  def average_wait(self):
+    if(self.rho > 1):
+      return math.inf
+    return self.average_customers/ self.lamda
+  @property
+  def average_customers(self):
+    if(self.rho > 1):
+      return math.inf
+    return an.expected_value(self.pdf)
+  @property
+  def utilization(self):
+    if(self.rho > 1):
+      return 1
+    u = sum(self.pdf[1:])
+    return u
+  def plot_customers(self, figsize = (10,5), **kwargs):
+    plot_md1_customers_dist(self, figsize = figsize, **kwargs)
 
 # simula uma única fila mm1 ou md1, baseado no parametro kind
 def m_queue(lamda, mu, max_time = 1000, max_events = 1000, kind = 'm'):
   assert kind in ['m','d']
-  wait_function = lambda x: np.random.exponential(1/x) if kind == 'm' else 1/x
+  wait_function = lambda x: np.random.exponential(1/x) if kind == 'm' else 1/mu
   time = 0
   nevents = 0
   ledger = []
@@ -151,17 +218,19 @@ def queue_sim(lamda, mu, max_time = 1000, max_events = 1000, runs = 10, kind = '
     service_df = ledger_df['duration'].rename({
       'duration' : 'service_duration'
     })
-
     service_df.dropna(inplace=True)
+  else:
+    service_df = pd.Series({index : 1/mu for index in ledger_df[ledger_df.type == 's'].index},\
+      name = 'duration')
 
-    ledger_df.drop(columns=['duration'], inplace= True)
+  ledger_df.drop(columns=['duration'], inplace= True)
 
   
 
   if(kind == 'm'):
     sim = MM1Simulation(lamda = lamda, mu = mu, data = ledger_df, service_durations = service_df)
   else:
-    sim = MD1Simulation(lamda = lamda, mu = mu, data = ledger_df)
+    sim = MD1Simulation(lamda = lamda, mu = mu, data = ledger_df, service_durations = service_df)
 
   if (export):
     sim.export_to_excel()

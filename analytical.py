@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.linalg import matrix_power
 from scipy.linalg import expm
+from scipy.stats import poisson
 
 def mm1_markov_chain(lamda, mu, capacity= 100):
     N = capacity
@@ -15,18 +16,45 @@ def mm1_markov_chain(lamda, mu, capacity= 100):
         M[i, i -1] = mu
     return M
 
-def stationary_distribution(lamda, mu, **kwargs):
-    if 'capacity' in kwargs:
-        Q = mm1_markov_chain(lamda, mu, capacity = kwargs['capacity'])
-    else:
-        Q = mm1_markov_chain(lamda, mu)
+def md1_markov_chain(lamda, mu, capacity = 100):
+    rho = lamda/mu
+    def alpha(k, rho):
+        return poisson.pmf(k, rho)
+    M = np.zeros(shape = (capacity,capacity))
+    for i in range(capacity):
+        lower = max(0,i - 1)
+        for j in range(lower, capacity):
+            M[i,j] = alpha(j - lower, rho)
 
-    stationary_chain = expm(Q* 1000)
+    
+    M[:, -1] = 1 - M.sum(axis = 1) + M[:, -1]
+    return M
 
-    if( np.isclose(stationary_chain, stationary_chain[0]).all() ):
-        return stationary_chain[0]
+def ctmc_stationary_distribution(Q):
+    # if 'capacity' in kwargs:
+    #     Q = mm1_markov_chain(lamda, mu, capacity = kwargs['capacity'])
+    # else:
+    #     Q = mm1_markov_chain(lamda, mu)
+    pi = expm(Q* 1000)
+
+    if( np.isclose(pi, pi[0]).all() ):
+        return pi[0]
     else:
         return None 
 
+def dtmc_stationary_distribution(P):
+    # if 'capacity' in kwargs:
+    #     P = md1_markov_chain(lamda, mu, capacity = kwargs['capacity'])
+    # else:
+    #     P = md1_markov_chain(lamda, mu)
+    pi = matrix_power(P, 1000)
+    if( np.isclose(pi, pi[0]).all() ):
+        return pi[0]
+    else:
+        return None 
+        
 def expected_value(pdf):
     return sum( [i * pdf[i] for i in range(len(pdf)) ] )
+
+
+
