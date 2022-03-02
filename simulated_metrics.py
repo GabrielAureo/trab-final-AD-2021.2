@@ -1,10 +1,13 @@
+from __future__ import annotations
 import math
 import pandas as pd
 import numpy as np
-
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from simulations import Simulation, queue_sim
 #calcula a utilização
 #retorna um dicionário com a utilização simulada e analitica
-def utilization(simulation_obj : 'Simulation'):
+def utilization(simulation_obj : Simulation):
   simulation = simulation_obj.data
   busy_time = simulation[simulation.N > 0].groupby('run').holding.sum()
   total_time = simulation.groupby('run').holding.sum()
@@ -25,7 +28,7 @@ def utilization(simulation_obj : 'Simulation'):
 
 #calcula a média de clientes na fila
 #retorna um dicionário com a média simulada e analitica
-def customers_metrics(simulation_obj : 'Simulation'):
+def customers_metrics(simulation_obj : Simulation):
   simulation = simulation_obj.data
   runs_groupby = simulation.groupby('run')
   total_time = runs_groupby.time.last()
@@ -52,7 +55,7 @@ def confidence_interval(samples, confidence_rate = 1.95):
 
 #calcula o tempo médio de espera e o tempo médio total que o cliente fica na fila
 #retorna um dicionário com as métricas simuladas e analíticas
-def wait_metric(simulation_obj : 'Simulation'):
+def wait_metric(simulation_obj : Simulation):
   simulation = simulation_obj.data
   services_df = simulation[simulation.type =='s']
   services_df = pd.merge(left= services_df, right = simulation_obj.service_durations, left_index=True, right_index=True)
@@ -102,7 +105,7 @@ def wait_metric(simulation_obj : 'Simulation'):
   }
 
 
-def metrics(simulation_obj : 'Simulation'):
+def metrics(simulation_obj : Simulation):
   _wait_metrics = wait_metric(simulation_obj)
   _customers_metrics = customers_metrics(simulation_obj)
   _utilization_metric = utilization(simulation_obj)
@@ -118,7 +121,7 @@ def metrics(simulation_obj : 'Simulation'):
   return metrics_df
 
 
-def wait_dist(simulation_obj : 'Simulation'):
+def wait_dist(simulation_obj : Simulation):
   simulation = simulation_obj.data
 
   services_df = simulation[simulation.type =='s']
@@ -190,54 +193,44 @@ def histogram(delays, n_bins = 10):
 
 def customers_dist(simulation_obj : 'Simulation'):
   simulation = simulation_obj.data
-  
 
   def pdf():
-    # _pdf = simulation.groupby(['run', 'N'])['holding'].sum()
-    # pdf_per_run = _pdf/_pdf.sum(level='run')
+
+    total_state_time_per_run = simulation.groupby(['run', 'N'])['holding'].sum()
+    total_time_per_run = simulation.groupby(['run'])['holding'].sum()
+    pdf_per_run = total_state_time_per_run/total_time_per_run
+    ci_df = pdf_per_run.groupby('N').apply(confidence_interval).to_frame(name = 'pdf_CI')
+    # remove valores (nan, nan) resultantes de amostras únicas
+    ci_df = ci_df[~ci_df.pdf_CI.apply( lambda x: np.isnan(x[0]) & np.isnan(x[1]))]
+    
+    _pdf = pdf_per_run.mean(level = 'N')
     # print(pdf_per_run)
     # _pdf = pdf_per_run.mean(level='N')
-    # _pdf = _pdf.rename('pdf')
-
-    total_time = simulation['holding'].sum()
-    time_per_state = simulation.groupby(['N'])['holding'].sum()
-    _pdf = time_per_state/total_time
     _pdf = _pdf.rename('pdf')
-
-
-
-
-    #ci_df = pdf_per_run.groupby('N').apply(confidence_interval).to_frame(name = 'pdf_CI')
-    # remove valores (nan, nan) resultantes de amostras únicas
-    #ci_df = ci_df[~ci_df.pdf_CI.apply( lambda x: np.isnan(x[0]) & np.isnan(x[1]))]
-    
-    #pdf_df = pd.merge(left = pdf, right = ci_df, left_on='N', right_on='N')
-    return _pdf
+    pdf_df = pd.merge(left = _pdf, right = ci_df, left_on='N', right_on='N')
+    return pdf_df
   
   def cdf():
-    _pdf = pdf()
-    # cdf_per_run = pdf_per_run.groupby(['run']).apply(
-    #   lambda x: x.sort_index().cumsum(axis = 0)
-    # )
-    cdf = _pdf.cumsum()
-    cdf = cdf.rename('cdf')
+    total_state_time_per_run = simulation.groupby(['run', 'N'])['holding'].sum()
+    total_time_per_run = simulation.groupby(['run'])['holding'].sum()
+    pdf_per_run = total_state_time_per_run/total_time_per_run
+    cdf_per_run = pdf_per_run.groupby(['run']).apply(
+       lambda x: x.cumsum(axis = 0)
+    )
+    #print(cdf_per_run)
+    _cdf = cdf_per_run.mean(level = 'N')
+    _cdf = _cdf.rename('cdf')
 
-    # ci_df = cdf_per_run.groupby('N').apply(confidence_interval).to_frame(name = 'cdf_CI')
-    # # remove valores (nan, nan) resultantes de amostras únicas
-    # ci_df = ci_df[~ci_df.cdf_CI.apply( lambda x: np.isnan(x[0]) & np.isnan(x[1]))]
+    ci_df = cdf_per_run.groupby('N').apply(confidence_interval).to_frame(name = 'cdf_CI')
+    #remove valores (nan, nan) resultantes de amostras únicas
+    ci_df = ci_df[~ci_df.cdf_CI.apply( lambda x: np.isnan(x[0]) & np.isnan(x[1]))]
     
-    # cdf_df = pd.merge(left = cdf, right = ci_df, left_on='N', right_on='N')
-    return cdf
+    cdf_df = pd.merge(left = _cdf, right = ci_df, left_on='N', right_on='N')
+    return cdf_df
   
   _pdf = pdf()
   _cdf = cdf()
-
   result = pd.merge(left = _pdf, right = _cdf, left_on='N', right_on='N')
-
+  result.sort_index(inplace=True)
   return result
-  
-# from simulations import queue_sim
 
-# sim = queue_sim(lamda = 100, mu = 10, runs = 10)
-# dist = customers_dist(sim)
-# print(dist)

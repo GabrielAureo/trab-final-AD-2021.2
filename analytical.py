@@ -35,7 +35,7 @@ def ctmc_stationary_distribution(Q):
     #     Q = mm1_markov_chain(lamda, mu, capacity = kwargs['capacity'])
     # else:
     #     Q = mm1_markov_chain(lamda, mu)
-    pi = expm(Q* 1000)
+    pi = expm(Q* 100000)
 
     if( np.isclose(pi, pi[0]).all() ):
         return pi[0]
@@ -47,7 +47,7 @@ def dtmc_stationary_distribution(P):
     #     P = md1_markov_chain(lamda, mu, capacity = kwargs['capacity'])
     # else:
     #     P = md1_markov_chain(lamda, mu)
-    pi = matrix_power(P, 1000)
+    pi = matrix_power(P, 10000)
     if( np.isclose(pi, pi[0]).all() ):
         return pi[0]
     else:
