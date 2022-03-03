@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from simulations import Simulation, queue_sim
+    from simulations import Simulation
 #calcula a utilização
 #retorna um dicionário com a utilização simulada e analitica
 def utilization(simulation_obj : Simulation):
@@ -155,9 +155,16 @@ def wait_dist(simulation_obj : Simulation):
   waits = waits.stack()
   waits = waits.droplevel(1)
   
-  return histogram(waits)
+  pdf_by_run = histogram_by_run(waits)
+  pdf_by_run.rename({'pdf'})
+  pdf = pdf_by_run(level = 'pdf')
 
-def histogram(delays, n_bins = 10):
+  cdf_by_run = pdf_by_run.groupby('run').apply(lambda x: x.cumsum())
+  cdf = cdf_by_run.mean(level = 'pdf')
+  print(pdf)
+  return pdf
+
+def histogram_by_run(delays, n_bins = 10):
   run_group = delays.groupby('run')
   mean_max = run_group.max().mean()
   mean_min = run_group.min().mean()
@@ -177,9 +184,8 @@ def histogram(delays, n_bins = 10):
   cuts_group = cuts.groupby(['run', 'cut'])
   cuts_by_run = cuts_group.sum()
   pdf_by_run = cuts_by_run/ cuts_by_run.sum(level = 'run')
-  pdf = pdf_by_run.mean(level = 'cut')
-  cdf_by_run = pdf_by_run.groupby('run').apply(lambda x: x.cumsum())
-  cdf = cdf_by_run.mean(level = 'cut')
+  #pdf = pdf_by_run.mean(level = 'cut')
+  
   # cuts = cuts.reset_index()
   # cuts = cuts.set_index(['run', 'bin'])
   # cuts = cuts.sort_index()
@@ -188,7 +194,7 @@ def histogram(delays, n_bins = 10):
 
   # print(mean_delay_by_cut_and_bin.mean(level = 'bin'))
   # mean_delay_by_cut_and_bin.to_clipboard()
-  return pdf, cdf
+  return pdf_by_run
     
 
 def customers_dist(simulation_obj : 'Simulation'):
@@ -211,12 +217,20 @@ def customers_dist(simulation_obj : 'Simulation'):
     return pdf_df
   
   def cdf():
+    max_state = simulation.N.max()
     total_state_time_per_run = simulation.groupby(['run', 'N'])['holding'].sum()
     total_time_per_run = simulation.groupby(['run'])['holding'].sum()
     pdf_per_run = total_state_time_per_run/total_time_per_run
-    cdf_per_run = pdf_per_run.groupby(['run']).apply(
+    cdf_per_run = pdf_per_run.groupby('run').apply(
        lambda x: x.cumsum(axis = 0)
     )
+
+    def fill_max(x):
+      max_range = pd.Series({(x.idxmax()[0],i): 1.0 for i in range(x.idxmax()[1] + 1, max_state + 1)})
+      x = x.append(max_range)
+      return x
+
+    cdf_per_run = cdf_per_run.groupby('run').apply(fill_max)
     #print(cdf_per_run)
     _cdf = cdf_per_run.mean(level = 'N')
     _cdf = _cdf.rename('cdf')
