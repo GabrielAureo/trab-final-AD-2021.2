@@ -46,8 +46,8 @@ def customers_metrics(simulation_obj : Simulation):
   return customers_df
 
 def confidence_interval(samples, confidence_rate = 1.95):
-  #print(samples)
   x = samples.mean()
+  
   n = samples.count()
   s = samples.std()
   z = confidence_rate
@@ -154,18 +154,25 @@ def wait_dist(simulation_obj : Simulation):
   waits = waits.set_index('run')
   waits = waits.stack()
   waits = waits.droplevel(1)
-  
-  pdf_by_run = histogram_by_run(waits)
-  pdf_by_run.rename({'pdf'})
-  pdf = pdf_by_run(level = 'pdf')
 
+
+  pdf_by_run = _histogram_by_run(waits)
+  pdf = pdf_by_run.mean(level = 'cut')
+  pdf_CI = pdf_by_run.groupby('cut')['wait'].apply(confidence_interval)
   cdf_by_run = pdf_by_run.groupby('run').apply(lambda x: x.cumsum())
-  cdf = cdf_by_run.mean(level = 'pdf')
-  print(pdf)
-  return pdf
+  cdf = cdf_by_run.mean(level = 'cut')
+  cdf_CI = cdf_by_run.groupby('cut')['wait'].apply(confidence_interval)
 
-def histogram_by_run(delays, n_bins = 10):
-  run_group = delays.groupby('run')
+  return_df = pd.DataFrame({
+    'pdf' : pdf.wait,
+    'pdf_CI' : pdf_CI,
+    'cdf' : cdf.wait,
+    'cdf_CI' : cdf_CI
+  })
+  return return_df
+
+def _histogram_by_run(waits, n_bins = 10):
+  run_group = waits.groupby('run')
   mean_max = run_group.max().mean()
   mean_min = run_group.min().mean()
   bin_size = (mean_max - mean_min)/n_bins
@@ -175,14 +182,15 @@ def histogram_by_run(delays, n_bins = 10):
   cuts = []
   for i in range(1, n_bins):
     bin = ( mean_min  + ((i - 1) * bin_size), mean_min  + (i * bin_size))
-    cut = delays[ delays.between( bin[0], bin[1], inclusive = False) ]
-    cut = cut.to_frame(name = 'delay')
+    cut = waits[ waits.between( bin[0], bin[1], inclusive = False) ]
+    cut = cut.to_frame(name = 'wait')
     cut['cut'] = [bin for _ in range(cut.shape[0])]
     cuts.append(cut)
   
   cuts = pd.concat(cuts)
   cuts_group = cuts.groupby(['run', 'cut'])
   cuts_by_run = cuts_group.sum()
+  
   pdf_by_run = cuts_by_run/ cuts_by_run.sum(level = 'run')
   #pdf = pdf_by_run.mean(level = 'cut')
   

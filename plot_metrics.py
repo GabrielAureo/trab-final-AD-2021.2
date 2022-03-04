@@ -88,7 +88,8 @@ def plot_md1_customers_dist(simulation_obj : MD1Simulation, figsize = (10,5), **
 
 def plot_mm1_wait_dist(simulation_obj : MM1Simulation, figsize = (10,5), **kwargs):
     waits = wait_dist(simulation_obj)
-    display(waits)
+    _plot_pdf(waits, 1, figsize= figsize, **kwargs)
+    return waits
 
 def plot_md1_wait_dist(simulation_obj : 'MD1Simulation', figsize = (10,5), **kwargs):
     pass
