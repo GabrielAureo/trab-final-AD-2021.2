@@ -157,10 +157,10 @@ def wait_dist(simulation_obj : Simulation):
 
 
   pdf_by_run = _histogram_by_run(waits)
-  pdf = pdf_by_run.mean(level = 'cut')
+  pdf = pdf_by_run.groupby('cut').mean()
   pdf_CI = pdf_by_run.groupby('cut')['wait'].apply(confidence_interval)
   cdf_by_run = pdf_by_run.groupby('run').apply(lambda x: x.cumsum())
-  cdf = cdf_by_run.mean(level = 'cut')
+  cdf = cdf_by_run.groupby('cut').mean()
   cdf_CI = cdf_by_run.groupby('cut')['wait'].apply(confidence_interval)
 
   return_df = pd.DataFrame({
@@ -182,7 +182,7 @@ def _histogram_by_run(waits, n_bins = 10):
   cuts = []
   for i in range(1, n_bins):
     bin = ( mean_min  + ((i - 1) * bin_size), mean_min  + (i * bin_size))
-    cut = waits[ waits.between( bin[0], bin[1], inclusive = False) ]
+    cut = waits[ waits.between( bin[0], bin[1], inclusive = 'left') ]
     cut = cut.to_frame(name = 'wait')
     cut['cut'] = [bin for _ in range(cut.shape[0])]
     cuts.append(cut)
@@ -190,8 +190,8 @@ def _histogram_by_run(waits, n_bins = 10):
   cuts = pd.concat(cuts)
   cuts_group = cuts.groupby(['run', 'cut'])
   cuts_by_run = cuts_group.sum()
-  
-  pdf_by_run = cuts_by_run/ cuts_by_run.sum(level = 'run')
+  total_wait_per_run = cuts_by_run.groupby('run').sum()
+  pdf_by_run = cuts_by_run/ total_wait_per_run
   #pdf = pdf_by_run.mean(level = 'cut')
   
   # cuts = cuts.reset_index()
@@ -217,7 +217,7 @@ def customers_dist(simulation_obj : 'Simulation'):
     # remove valores (nan, nan) resultantes de amostras únicas
     ci_df = ci_df[~ci_df.pdf_CI.apply( lambda x: np.isnan(x[0]) & np.isnan(x[1]))]
     
-    _pdf = pdf_per_run.mean(level = 'N')
+    _pdf = pdf_per_run.groupby('N').mean()
     # print(pdf_per_run)
     # _pdf = pdf_per_run.mean(level='N')
     _pdf = _pdf.rename('pdf')
@@ -234,13 +234,13 @@ def customers_dist(simulation_obj : 'Simulation'):
     )
 
     def fill_max(x):
-      max_range = pd.Series({(x.idxmax()[0],i): 1.0 for i in range(x.idxmax()[1] + 1, max_state + 1)})
-      x = x.append(max_range)
+      max_range = pd.Series({(x.idxmax()[0],i): 1.0 for i in range(x.idxmax()[1] + 1, max_state + 1)}, dtype=np.float64)
+      x = pd.concat([x,max_range])
       return x
 
     cdf_per_run = cdf_per_run.groupby('run').apply(fill_max)
     #print(cdf_per_run)
-    _cdf = cdf_per_run.mean(level = 'N')
+    _cdf = cdf_per_run.groupby('N').mean()
     _cdf = _cdf.rename('cdf')
 
     ci_df = cdf_per_run.groupby('N').apply(confidence_interval).to_frame(name = 'cdf_CI')
