@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 
 def _plot(simulated, CI, analytical, figsize = (10,5), plot_analytical = True, **kwargs ):
     fig, ax = plt.subplots(figsize = figsize)
-    print(simulated)
+
     ax.plot(simulated, label = kwargs['simulated_label'])
-    print('aqui 2')
+
     x = simulated.index
     y1 = CI.apply(lambda x: x[0])
     y2 = CI.apply(lambda x: x[1])
@@ -23,7 +23,6 @@ def _plot(simulated, CI, analytical, figsize = (10,5), plot_analytical = True, *
     def _plot_analytical():
         ax.plot(analytical, color = 'red', linestyle = '--', dashes = (5,10), label = kwargs['analytical_label'])
     
-    print(plot_analytical)
     if(plot_analytical):
         _plot_analytical()
         max_y = max( simulated.max(), analytical.max() ) + max(simulated.std(), analytical.std() )
@@ -34,13 +33,13 @@ def _plot(simulated, CI, analytical, figsize = (10,5), plot_analytical = True, *
     ax.set_xlabel(kwargs['x_label'])
     ax.set_ylabel(kwargs['y_label'])
     
-    ticks_dist = kwargs['xticks_dist'] if('xticks_dist' in kwargs.keys()) else 1
+    total_ticks = kwargs['total_ticks'] if('total_ticks' in kwargs.keys()) else len(x)
     
 
-    total_ticks = x.max()/ticks_dist
     total_ticks = int(total_ticks) + 1
     #ax.set_xticks( np.linspace(0, ticks_dist * total_ticks , total_ticks + 1, dtype = int ))
-    ax.set_xticks = ( [bisect.bisect_left(simulated.index, i) for i in [x + ticks_dist for _ in range(total_ticks)] ] )
+
+    ax.set_xticks( np.linspace(0, x.max(), total_ticks) )
     ax.set_xticklabels(ax.get_xticks(), rotation = 90)
 
     ax.set_yticks(np.linspace(0, max_y , 11 ))
@@ -96,7 +95,7 @@ def plot_md1_customers_dist(simulation_obj : MD1Simulation, figsize = (10,5), **
     _kwargs = {
         'x_label' : 'queue_size',
     }
-
+    kwargs.update(_kwargs)
     P = an.md1_markov_chain(simulation_obj.lamda, simulation_obj.mu, capacity = dists.index.max() + 1)
     pi = an.dtmc_stationary_distribution(P)
     pdf = pi[:dists.index.max() + 1]
