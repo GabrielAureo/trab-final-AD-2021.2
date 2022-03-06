@@ -8,7 +8,7 @@ import analytical as an
 
 from pandas.core.frame import DataFrame
 
-from plot_metrics import plot_md1_customers_dist, plot_mm1_customers_dist
+from plot_metrics import plot_md1_customers_dist, plot_mm1_customers_dist, plot_md1_wait_dist, plot_mm1_wait_dist
 
 
 #classe abstrata das simulações
@@ -51,6 +51,10 @@ class Simulation:
   @abc.abstractmethod
   def plot_customers(self):
     pass
+
+  @abc.abstractmethod
+  def plot_wait(self):
+    pass
   
 #classe Simulação MM1
 class MM1Simulation(Simulation):
@@ -90,6 +94,9 @@ class MM1Simulation(Simulation):
   
   def plot_customers(self, figsize = (10,5), **kwargs):
     plot_mm1_customers_dist(self, figsize = figsize, **kwargs)
+  
+  def plot_wait(self, figsize=(10,5), **kwargs):
+    plot_mm1_wait_dist(self, figsize=figsize, **kwargs)
 
   def export_to_excel(self):
     time_str = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
@@ -134,6 +141,9 @@ class MD1Simulation(Simulation):
     return u
   def plot_customers(self, figsize = (10,5), **kwargs):
     plot_md1_customers_dist(self, figsize = figsize, **kwargs)
+  
+  def plot_wait(self, figsize=(10,5), **kwargs):
+    plot_md1_wait_dist(self, figsize=figsize, **kwargs)
 
 # simula uma única fila mm1 ou md1, baseado no parametro kind
 def m_queue(lamda, mu, max_time = 1000, max_events = 1000, kind = 'm'):

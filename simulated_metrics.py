@@ -1,5 +1,6 @@
 from __future__ import annotations
 import math
+from IPython.core.display_functions import display
 import pandas as pd
 import numpy as np
 from typing import TYPE_CHECKING
@@ -78,7 +79,8 @@ def wait_metric(simulation_obj : Simulation):
       'time_x' : 'service_end',
       'time_y' : 'arrival'
     }, inplace = True)
-    arrivals_services['service_start'] = arrivals_services['service_end'] - arrivals_services['duration']
+    
+    #arrivals_services['service_start'] = arrivals_services['service_end'] - arrivals_services['duration']
 
     waits = arrivals_services.service_end  - arrivals_services.arrival
     #queue_waits = arrivals_services.service_start - arrivals_services.arrival
