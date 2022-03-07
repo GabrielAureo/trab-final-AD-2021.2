@@ -59,7 +59,6 @@ def confidence_interval(samples, confidence_rate = 1.95):
 def wait_metric(simulation_obj : Simulation):
   simulation = simulation_obj.data
   services_df = simulation[simulation.type =='s']
-  services_df = pd.merge(left= services_df, right = simulation_obj.service_durations, left_index=True, right_index=True)
 
   services_by_run = services_df.groupby('run')
   arrivals_df = simulation[simulation.type =='a']
@@ -127,14 +126,13 @@ def wait_dist(simulation_obj : Simulation):
   simulation = simulation_obj.data
 
   services_df = simulation[simulation.type =='s']
-  services_df = pd.merge(left= services_df, right = simulation_obj.service_durations, left_index=True, right_index=True)
   services_by_run = services_df.groupby('run')
   arrivals_df = simulation[simulation.type =='a']
   arrivals_by_run = arrivals_df.groupby('run')
 
   waits = []
   for idx, services in services_by_run:
-    services = services.reset_index()[['time', 'duration']]
+    services = services.reset_index()['time']
     services_count = services.shape[0]
     corresponding_arrivals = arrivals_by_run.get_group(idx).head(services_count).reset_index().time
 
@@ -145,7 +143,6 @@ def wait_dist(simulation_obj : Simulation):
       'time_x' : 'service_end',
       'time_y' : 'arrival'
     }, inplace = True)
-    arrivals_services['service_start'] = arrivals_services['service_end'] - arrivals_services['duration']
 
     waits_N_run = arrivals_services.service_end  - arrivals_services.arrival
     waits_N_run['run'] = idx
