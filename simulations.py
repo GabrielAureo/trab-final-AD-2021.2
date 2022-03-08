@@ -5,7 +5,7 @@ import math
 from datetime import datetime
 import abc
 import analytical as an
-
+import os
 from pandas.core.frame import DataFrame
 
 from plot_metrics import plot_md1_customers_dist, plot_mm1_customers_dist, plot_md1_wait_dist, plot_mm1_wait_dist
@@ -98,13 +98,12 @@ class MM1Simulation(Simulation):
   def plot_wait(self, figsize=(10,5), **kwargs):
     plot_mm1_wait_dist(self, figsize=figsize, **kwargs)
 
-  def export_to_excel(self):
+  def export_to_csv(self):
     time_str = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
     type_str = "MM1"
-    writer = pd.ExcelWriter(f"Simulation_{type_str}_{time_str}_{self.lamda}_{self.mu}.xlsx", engine='xlsxwriter')
-    self.data.to_excel(writer, 'simulation_data')
-    self.service_durations.to_excel(writer, 'services_data' )
-    writer.save()
+    filename = f"Simulation_{type_str}_{time_str}_{self.lamda}_{self.mu}.csv"
+    os.makedirs('exports', exist_ok=True)
+    self.data.to_csv(f'exports/{filename}')
     return
 
 #classe Simulação MD1
@@ -144,6 +143,14 @@ class MD1Simulation(Simulation):
   
   def plot_wait(self, figsize=(10,5), **kwargs):
     plot_md1_wait_dist(self, figsize=figsize, **kwargs)
+  
+  def export_to_csv(self):
+    time_str = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
+    type_str = "MD1"
+    filename = f"Simulation_{type_str}_{time_str}_{self.lamda}_{self.mu}.csv"
+    os.makedirs('exports', exist_ok=True)
+    self.data.to_csv(f'exports/{filename}')
+    return
 
 # simula uma única fila mm1 ou md1, baseado no parametro kind
 def m_queue(lamda, mu, max_time = 1000, max_events = 1000, kind = 'm'):
@@ -243,7 +250,7 @@ def queue_sim(lamda, mu, max_time = 1000, max_events = 1000, runs = 10, kind = '
     sim = MD1Simulation(lamda = lamda, mu = mu, data = ledger_df, service_durations = service_df)
 
   if (export):
-    sim.export_to_excel()
+    sim.export_to_csv()
   return sim
 
 

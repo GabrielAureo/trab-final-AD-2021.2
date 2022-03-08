@@ -2,7 +2,7 @@ from __future__ import annotations
 import numpy as np
 import matplotlib.pyplot as plt
 import analytical as an
-from simulated_metrics import customers_dist, wait_dist
+from simulated_metrics import customers_dist, wait_dist, metrics
 from IPython.display import display
 import math
 from typing import TYPE_CHECKING
@@ -166,4 +166,6 @@ def plot_md1_wait_dist(simulation_obj : MD1Simulation, figsize = (10,5), **kwarg
 
 def plot_average_metrics(simulations_obj:  list(MD1Simulation), figsize = (10,5), **kwargs):
     simulations = [obj.data for obj in simulations_obj]
+    averages = [metrics(sim) for sim in simulations]
+    
 
