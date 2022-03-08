@@ -69,7 +69,7 @@ def wait_metric(simulation_obj : Simulation):
     'wait' : []
   }
   for idx, services in services_by_run:
-    services = services.reset_index()[['time', 'duration']]
+    services = services.reset_index()['time']
     services_count = services.shape[0]
     corresponding_arrivals = arrivals_by_run.get_group(idx).head(services_count).reset_index().time
     arrivals_services = pd.merge(left = services, right = corresponding_arrivals,\
@@ -163,8 +163,8 @@ def wait_dist(simulation_obj : Simulation):
   cdf_CI = cdf_by_run.groupby('cut')['wait'].apply(confidence_interval)
 
   return_df = pd.DataFrame({
-    'pdf' : pdf.wait,
-    'pdf_CI' : pdf_CI,
+    # 'pdf' : pdf.wait,
+    # 'pdf_CI' : pdf_CI,
     'cdf' : cdf.wait,
     'cdf_CI' : cdf_CI
   })

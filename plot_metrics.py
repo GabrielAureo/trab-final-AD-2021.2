@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from simulations import MD1Simulation, MM1Simulation
 
+
+
 def _plot(simulated, CI, analytical, figsize = (10,5), plot_analytical = True, **kwargs ):
     fig, ax = plt.subplots(figsize = figsize)
 
@@ -39,10 +41,10 @@ def _plot(simulated, CI, analytical, figsize = (10,5), plot_analytical = True, *
 
     #y_ticks = np.linspace(start = min_y, stop = max_y, num = 10)
     #ax.set_yticks(y_ticks)
-    ax.set_xlim(left = 0)
+    #ax.set_xlim(left = 0)
 
     #plota a linha y = 0
-    plt.axhline(y=0, color='black', linewidth = 1, linestyle='-')
+    #plt.axhline(y=0, color='black', linewidth = 1, linestyle='-')
 
     fig.patch.set_facecolor('white')
     plt.grid( linestyle = '--')
@@ -79,7 +81,7 @@ def _customers_ticks(data, max_ticks = -1):
 #gera ticks do eixo x do plot de esperas
 def _waits_ticks(data):
     xticks = [x[0] for x in data.index]
-    xlabels = [f'({x[0]:.2f}, {x[1]:.2f} ' for x in data.index]
+    xlabels = [f'{x[0]:.2f}' for x in data.index]
     return xticks, xlabels
 
 def plot_mm1_customers_dist(simulation_obj : MM1Simulation, figsize = (10,5), **kwargs):
@@ -142,7 +144,7 @@ def plot_mm1_wait_dist(simulation_obj : MM1Simulation, figsize = (10,5), **kwarg
     }
     kwargs.update(_kwargs)
     waits.index = [x[0] for x in waits.index]
-    _plot_pdf(waits, None, plot_analytical = False, figsize= figsize, **kwargs)
+    #_plot_pdf(waits, None, plot_analytical = False, figsize= figsize, **kwargs)
     _plot_cdf(waits, None, plot_analytical = False, figsize= figsize, **kwargs)
 
     return waits
@@ -158,6 +160,10 @@ def plot_md1_wait_dist(simulation_obj : MD1Simulation, figsize = (10,5), **kwarg
     }
     kwargs.update(_kwargs)
     waits.index = [x[0] for x in waits.index]
-    _plot_pdf(waits, None, plot_analytical = False, figsize= figsize, **kwargs)
+    #_plot_pdf(waits, None, plot_analytical = False, figsize= figsize, **kwargs)
     _plot_cdf(waits, None, plot_analytical = False, figsize= figsize, **kwargs)
     return waits
+
+def plot_average_metrics(simulations_obj:  list(MD1Simulation), figsize = (10,5), **kwargs):
+    simulations = [obj.data for obj in simulations_obj]
+
