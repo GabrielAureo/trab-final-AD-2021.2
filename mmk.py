@@ -104,7 +104,7 @@ def m_queue(lamda, mu, k, max_time = 1000, max_events = 1000, kind = 'm'):
         serving -= 1
       else:
         N -= 1
-      if(N > 0):
+      if(serving > 0 or N > 0):
         service_duration = wait_function(mu)
         service_time = time + service_duration
         equeue.append({
