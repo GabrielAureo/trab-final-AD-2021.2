@@ -91,7 +91,33 @@ def plot_mm1_customers_dist(simulation_obj : MM1Simulation, figsize = (10,5), **
     should_plot_analytical = simulation_obj.rho < 1
     Q = an.mm1_markov_chain(simulation_obj.lamda, simulation_obj.mu, capacity = dists.index.max() + 1)
     pi = an.ctmc_stationary_distribution(Q)
+    
+    pdf = pi[:dists.index.max() + 1]
+    cdf = pdf.cumsum()
 
+    max_ticks = kwargs['max_ticks'] if 'max_ticks' in kwargs.keys() else -1
+    xticks = _customers_ticks(dists, max_ticks = max_ticks)
+
+    _kwargs = {
+        'x_label' : 'queue_size',
+        'xticks' : xticks,
+        'simulated_label' : 'simulated cdf',
+        'analytical_label' : 'analytical cdf',
+        'y_label' : 'cdf'
+    }
+    
+    kwargs.update(_kwargs)
+    _plot_pdf(dists, pdf, figsize= figsize, plot_analytical= should_plot_analytical, **kwargs)
+    _plot_cdf(dists, cdf, figsize= figsize, plot_analytical= should_plot_analytical, **kwargs)
+
+def plot_mmk_customers_dist(simulation_obj : MM1Simulation, figsize = (10,5), **kwargs):
+    dists = customers_dist(simulation_obj)
+    display(dists)
+
+    should_plot_analytical = simulation_obj.rho < 1
+    Q = an.mmk_markov_chain(simulation_obj.lamda, simulation_obj.mu, simulation_obj.k, capacity = dists.index.max() + 1)
+    pi = an.ctmc_stationary_distribution(Q)
+    print(Q)
     pdf = pi[:dists.index.max() + 1]
     cdf = pdf.cumsum()
 
@@ -106,6 +132,7 @@ def plot_mm1_customers_dist(simulation_obj : MM1Simulation, figsize = (10,5), **
     kwargs.update(_kwargs)
     _plot_pdf(dists, pdf, figsize= figsize, plot_analytical= should_plot_analytical, **kwargs)
     _plot_cdf(dists, cdf, figsize= figsize, plot_analytical= should_plot_analytical, **kwargs)
+
 
 def plot_md1_customers_dist(simulation_obj : MD1Simulation, figsize = (10,5), **kwargs):
     dists = customers_dist(simulation_obj)

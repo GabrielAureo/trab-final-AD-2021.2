@@ -198,13 +198,7 @@ def m_queue(lamda, mu, max_time = 1000, max_events = 1000, kind = 'm'):
     else:
       N -= 1
       if(N > 0):
-        service_duration = wait_function(mu)
-        service_time = time + service_duration
-        equeue.append({
-          'type' : 's',
-          'time' : service_time,
-          'duration' : service_duration
-          })
+        schedule_service()
         equeue = sorted(equeue, key = lambda x : x['time'])
     
     event['N'] = N

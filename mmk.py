@@ -8,7 +8,7 @@ import analytical as an
 
 from pandas.core.frame import DataFrame
 
-from plot_metrics import plot_md1_customers_dist, plot_mm1_customers_dist, plot_md1_wait_dist, plot_mm1_wait_dist
+from plot_metrics import plot_md1_customers_dist, plot_mm1_customers_dist, plot_md1_wait_dist, plot_mm1_wait_dist, plot_mmk_customers_dist
 from simulations import Simulation
 
 
@@ -45,7 +45,7 @@ class MMKSimulation(Simulation):
     u = sum(self.pdf[1:])
     return u
   def plot_customers(self, figsize = (10,5), **kwargs):
-    plot_mm1_customers_dist(self, figsize = figsize, **kwargs)
+    plot_mmk_customers_dist(self, figsize = figsize, **kwargs)
   
   def plot_wait(self, figsize=(10,5), **kwargs):
     plot_mm1_wait_dist(self, figsize=figsize, **kwargs)
@@ -88,35 +88,23 @@ def m_queue(lamda, mu, k, max_time = 1000, max_events = 1000, kind = 'm'):
     nevents += 1
     event = equeue.pop(0)
     time, etype = event['time'] , event['type']
-
     if(etype == 'a'):
-      if(serving < k):
-        serving += 1
-      else:
-        N += 1
-
-      if(N == 1):
+      N += 1
+      if(N <= k):
         schedule_service()
       schedule_arrival()
       equeue = sorted(equeue, key = lambda x : x['time'])
     else:
-      if(N == 0):
-        serving -= 1
-      else:
-        N -= 1
-      if(serving > 0 or N > 0):
-        service_duration = wait_function(mu)
-        service_time = time + service_duration
-        equeue.append({
-          'type' : 's',
-          'time' : service_time,
-          'duration' : service_duration
-          })
-        equeue = sorted(equeue, key = lambda x : x['time'])
+      N -= 1
+      if(N >= k):
+        schedule_service()
+
+      equeue = sorted(equeue, key = lambda x : x['time'])
     
     event['N'] = N
+    #event['serving'] = serving
     ledger.append(event)
-
+    #print(ledger)
   return ledger
 
 # simula multiplas filas mm1 ou md1

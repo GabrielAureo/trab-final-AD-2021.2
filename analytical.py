@@ -21,10 +21,10 @@ def mmk_markov_chain(lamda, mu, k, capacity = 100):
     M = np.zeros(shape = (N,N))
     M[0,1] = lamda
     M[0,0] = - lamda
-    M[N -1, N-2 ] = min( k - capacity, 1) * mu
+    M[N -1, N-2 ] = k * mu
     M[N -1,N -1 ] = - M[N -1, N-2 ]
     for i in range(1, N - 1):
-        _mu = min( k - i, 1) * mu
+        _mu = min( i , k) * mu
         M[i,i] = -(lamda + _mu)
         M[i, i + 1] = lamda
         M[i, i -1] = _mu
