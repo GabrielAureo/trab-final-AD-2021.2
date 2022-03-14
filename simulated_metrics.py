@@ -204,8 +204,12 @@ def _histogram_by_run(waits, n_bins = 10):
   return pdf_by_run
     
 
-def customers_dist(simulation_obj : 'Simulation'):
+def customers_dist(simulation_obj : 'Simulation', trim = False):
   simulation = simulation_obj.data
+  if(trim):
+    max_states = simulation.groupby('run')['N'].max()
+    min_of_max = min(max_states)
+    simulation = simulation[simulation['N'] < min_of_max]
 
   def pdf():
 

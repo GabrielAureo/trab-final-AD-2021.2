@@ -8,7 +8,7 @@ import analytical as an
 
 from pandas.core.frame import DataFrame
 
-from plot_metrics import plot_md1_customers_dist, plot_mm1_customers_dist, plot_md1_wait_dist, plot_mm1_wait_dist, plot_mmk_customers_dist
+from plot_metrics import plot_mm1_wait_dist, plot_mmk_customers_dist
 from simulations import Simulation
 
 
@@ -25,22 +25,22 @@ class MMKSimulation(Simulation):
   
   @property
   def pdf(self):
-    P = an.mmk_markov_chain(self.lamda, self.mu, capacity= self.data.N.max())
+    P = an.mmk_markov_chain(self.lamda, self.mu, self.k)
     pi = an.ctmc_stationary_distribution(P)
     return pi
   @property
   def average_wait(self):
-    if(self.rho > 1):
+    if(self.rho > self.k):
       return math.inf
     return self.average_customers/ self.lamda
   @property
   def average_customers(self):
-    if(self.rho > 1):
+    if(self.rho > self.k):
       return math.inf
     return an.expected_value(self.pdf)
   @property
   def utilization(self):
-    if(self.rho > 1):
+    if(self.rho > self.k):
       return 1
     u = sum(self.pdf[1:])
     return u

@@ -39,12 +39,9 @@ def _plot(simulated, CI, analytical, figsize = (10,5), plot_analytical = True, *
     ax.set_xlabel(kwargs['x_label'])
     ax.set_ylabel(kwargs['y_label'])
 
-    #y_ticks = np.linspace(start = min_y, stop = max_y, num = 10)
-    #ax.set_yticks(y_ticks)
-    #ax.set_xlim(left = 0)
-
-    #plota a linha y = 0
-    #plt.axhline(y=0, color='black', linewidth = 1, linestyle='-')
+    print(kwargs['title'], kwargs['subtitle'])
+    if('title' in kwargs and 'subtitle' in kwargs):
+        ax.set_title(kwargs['title'] + '\n' + kwargs['subtitle'])
 
     fig.patch.set_facecolor('white')
     plt.grid( linestyle = '--')
@@ -52,9 +49,9 @@ def _plot(simulated, CI, analytical, figsize = (10,5), plot_analytical = True, *
 
 def _plot_pdf(simulated_distributions, analytical_pdf , plot_analytical = True, figsize = (10,5), **kwargs):
     _kwargs = {
-        'simulated_label' : 'simulated pdf',
-        'analytical_label' : 'analytical pdf',
-        'y_label' : 'pdf'
+        'simulated_label' : 'simulated',
+        'analytical_label' : 'analytical',
+        'y_label' : 'probability'
     }
     kwargs.update(_kwargs)
     _plot(simulated_distributions['pdf'], simulated_distributions['pdf_CI'], analytical_pdf, plot_analytical= plot_analytical, figsize= figsize, **kwargs)
@@ -62,9 +59,9 @@ def _plot_pdf(simulated_distributions, analytical_pdf , plot_analytical = True, 
     
 def _plot_cdf(simulated_distributions, analytical_cdf,  plot_analytical = True, figsize = (10,5), **kwargs):
     _kwargs = {
-        'simulated_label' : 'simulated cdf',
-        'analytical_label' : 'analytical cdf',
-        'y_label' : 'cdf'
+        'simulated_label' : 'simulated',
+        'analytical_label' : 'analytical',
+        'y_label' : 'probability'
     }
     kwargs.update(_kwargs)
     _plot(simulated_distributions['cdf'],simulated_distributions['cdf_CI'], analytical_cdf, plot_analytical= plot_analytical, figsize = figsize,**kwargs)
@@ -84,8 +81,8 @@ def _waits_ticks(data):
     xlabels = [f'{x[0]:.2f}' for x in data.index]
     return xticks, xlabels
 
-def plot_mm1_customers_dist(simulation_obj : MM1Simulation, figsize = (10,5), **kwargs):
-    dists = customers_dist(simulation_obj)
+def plot_mm1_customers_dist(simulation_obj : MM1Simulation, trim = False, figsize = (10,5), **kwargs):
+    dists = customers_dist(simulation_obj, trim = trim)
     display(dists)
 
     should_plot_analytical = simulation_obj.rho < 1
@@ -101,23 +98,22 @@ def plot_mm1_customers_dist(simulation_obj : MM1Simulation, figsize = (10,5), **
     _kwargs = {
         'x_label' : 'queue_size',
         'xticks' : xticks,
-        'simulated_label' : 'simulated cdf',
-        'analytical_label' : 'analytical cdf',
-        'y_label' : 'cdf'
+        'title' : 'Queue Size PMF',
+        'subtitle' : f"M/M/1 λ = {simulation_obj.lamda}, μ = {simulation_obj.mu}, ρ = {simulation_obj.rho}"
     }
     
     kwargs.update(_kwargs)
     _plot_pdf(dists, pdf, figsize= figsize, plot_analytical= should_plot_analytical, **kwargs)
+    kwargs.update({'title' : 'Queue Size CMF'})
     _plot_cdf(dists, cdf, figsize= figsize, plot_analytical= should_plot_analytical, **kwargs)
 
-def plot_mmk_customers_dist(simulation_obj : MM1Simulation, figsize = (10,5), **kwargs):
-    dists = customers_dist(simulation_obj)
+def plot_mmk_customers_dist(simulation_obj, figsize = (10,5),trim = False, **kwargs):
+    dists = customers_dist(simulation_obj, trim = trim)
     display(dists)
 
     should_plot_analytical = simulation_obj.rho < 1
     Q = an.mmk_markov_chain(simulation_obj.lamda, simulation_obj.mu, simulation_obj.k, capacity = dists.index.max() + 1)
     pi = an.ctmc_stationary_distribution(Q)
-    print(Q)
     pdf = pi[:dists.index.max() + 1]
     cdf = pdf.cumsum()
 
@@ -126,16 +122,19 @@ def plot_mmk_customers_dist(simulation_obj : MM1Simulation, figsize = (10,5), **
 
     _kwargs = {
         'x_label' : 'queue_size',
-        'xticks' : xticks
+        'xticks' : xticks,
+        'title' : 'Queue Size PMF',
+        'subtitle' : f"M/M/{simulation_obj.k} λ = {simulation_obj.lamda}, μ = {simulation_obj.mu}, ρ = {simulation_obj.rho}"
     }
     
     kwargs.update(_kwargs)
     _plot_pdf(dists, pdf, figsize= figsize, plot_analytical= should_plot_analytical, **kwargs)
+    kwargs.update({'title': 'Queue Size CMF'})
     _plot_cdf(dists, cdf, figsize= figsize, plot_analytical= should_plot_analytical, **kwargs)
 
 
-def plot_md1_customers_dist(simulation_obj : MD1Simulation, figsize = (10,5), **kwargs):
-    dists = customers_dist(simulation_obj)
+def plot_md1_customers_dist(simulation_obj : MD1Simulation, trim = False, figsize = (10,5), **kwargs):
+    dists = customers_dist(simulation_obj, trim= trim)
     display(dists)
 
     should_plot_analytical = simulation_obj.rho < 1
@@ -145,7 +144,9 @@ def plot_md1_customers_dist(simulation_obj : MD1Simulation, figsize = (10,5), **
 
     _kwargs = {
         'x_label' : 'queue_size',
-        'xticks' : xticks
+        'xticks' : xticks,
+        'title' : 'Queue Size PMF',
+        'subtitle' : f"M/D/1 λ = {simulation_obj.lamda}, μ = {simulation_obj.mu}, ρ = {simulation_obj.rho}"
     }
     kwargs.update(_kwargs)
     if(should_plot_analytical):
@@ -158,6 +159,7 @@ def plot_md1_customers_dist(simulation_obj : MD1Simulation, figsize = (10,5), **
         cdf = None
 
     _plot_pdf(dists, pdf, figsize= figsize, plot_analytical =should_plot_analytical,  **kwargs)
+    kwargs.update({'title' : 'Queue Size CMF' })
     _plot_cdf(dists, cdf, figsize= figsize, plot_analytical =should_plot_analytical, **kwargs)
 
 def plot_mm1_wait_dist(simulation_obj : MM1Simulation, figsize = (10,5), **kwargs):
@@ -167,7 +169,9 @@ def plot_mm1_wait_dist(simulation_obj : MM1Simulation, figsize = (10,5), **kwarg
     _kwargs = {
         'x_label' : 'mean_wait',
         'xticks' : xticks,
-        'xlabels' : xlabels
+        'xlabels' : xlabels,
+        'title' : 'Waits CDF',
+        'subtitle' : f"M/M/1 λ = {simulation_obj.lamda}, μ = {simulation_obj.mu}, ρ = {simulation_obj.rho}"
     }
     kwargs.update(_kwargs)
     waits.index = [x[0] for x in waits.index]
@@ -183,7 +187,9 @@ def plot_md1_wait_dist(simulation_obj : MD1Simulation, figsize = (10,5), **kwarg
     _kwargs = {
         'x_label' : 'mean_wait',
         'xticks' : xticks,
-        'xlabels' : xlabels
+        'xlabels' : xlabels,
+        'title' : 'Waits CDF',
+        'subtitle' : f"M/D/1 λ = {simulation_obj.lamda}, μ = {simulation_obj.mu}, ρ = {simulation_obj.rho}"
     }
     kwargs.update(_kwargs)
     waits.index = [x[0] for x in waits.index]
